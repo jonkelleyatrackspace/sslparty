@@ -1,3 +1,6 @@
+from app.handlers.base import BaseHandler
+from app.handlers.base import *
+
 import os
 import threading
 import tornado.options

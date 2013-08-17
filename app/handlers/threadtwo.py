@@ -1,5 +1,5 @@
-from base import BaseHandler
-from base import *
+from app.handlers.base import BaseHandler
+from app.handlers.base import *
 
 class Worker(threading.Thread):
    def __init__(self, callback=None, *args, **kwargs):
@@ -11,7 +11,7 @@ class Worker(threading.Thread):
         time.sleep(3)
         self.callback('DONE')
 
-class ForceCheck(BaseHandler):
+class ThreadHandlerTwo(BaseHandler):
     @asynchronous
     def get(self):
         self.load_json()

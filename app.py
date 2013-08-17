@@ -8,17 +8,24 @@ import tornado.web
 from tornado import gen
 from tornado.web import asynchronous
 
-import app.handlers
-
 tornado.options.define('port', type=int, default=9000, help='server port number (default: 9000)')
 tornado.options.define('debug', type=bool, default=True, help='run in debug mode with autoreload (default: False)')
 
-
+# app.handlers exists within the directory structure of this tornado project.
+#  This is how your routes know how to register the handlers from your handler classes. YAY!
+from app.handlers import (
+    base,
+    index,
+    thread,
+    threadtwo,
+)
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
-            (r"/", app.handlers.index.IndexHandler),
-            (r"/thread", app.handlers.thread.ThreadHandler),
+            (r"/", index.IndexHandler),
+            (r"/thread", thread.ThreadHandler),
+            (r"/thread2", threadtwo.ThreadHandlerTwo),
+            #(r"/forcecheck/domain/all", app.handlers.forcecheck.ForceCheckHandler),
         ]
         settings = dict(
             static_path = os.path.join(os.path.dirname(__file__), "static"),

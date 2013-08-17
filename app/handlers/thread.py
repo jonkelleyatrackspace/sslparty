@@ -1,5 +1,6 @@
-from base import BaseHandler
-from base import *
+from app.handlers.base import BaseHandler
+from app.handlers.base import *
+
 
 class Worker(threading.Thread):
    def __init__(self, callback=None, *args, **kwargs):

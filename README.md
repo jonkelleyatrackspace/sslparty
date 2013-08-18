@@ -45,8 +45,10 @@ python setup.py bdist --format=rpm
 This application is designed to run as a daemon that provides both an API and a poller to run the jobs.  API methods that are available are documented below:
 
 ##### POST Methods
+
 * AddSite
 * RemoveSite
+
 Both of these methods take the following JSON object along with a Content-Type: application/json header and return HTTP status codes only.
 ````
 '{"site":
@@ -56,7 +58,9 @@ Both of these methods take the following JSON object along with a Content-Type: 
     }
 }'
 ````
+
 * ForceCheck
+
 This method takes the following JSON object along with a Content-Type: application/json header and returns a status report for the passed-in site/domain, without adding it to be checked in the future.
 ````
 Takes:
@@ -79,8 +83,10 @@ Returns:
     }
 }'
 ````
+
 * AddDomain
 * RemoveDomain
+
 Both of these methods take the following JSON object along with the Content-Type: application/json header and return HTTP status codes only.
 ````
 '{"domain":
@@ -89,8 +95,11 @@ Both of these methods take the following JSON object along with the Content-Type
     }
 }'
 ````
+
 ##### GET Methods
+
 * ListSites
+
 This method returns a list of sites and their last check timestamp, could be used to feed a poller or dashboard. The last check timestamp matches the format of `date +%F\ %T`.
 ````
 '{"sites":
@@ -110,7 +119,9 @@ This method returns a list of sites and their last check timestamp, could be use
     }
 }'
 ````
+
 * Report
+
 This method returns a total dump of the data contained with the database to be parsed by a dashboard or alerting/reporting application.  The last check timestamp matches the format of `date +%F\ %T`.
 ````
 '{"sites":
@@ -128,11 +139,14 @@ This method returns a total dump of the data contained with the database to be p
     }
 }'
 ````
+
 * FailedSites
+
 This method returns the same data as the Report method, but only for sites which have the value "false" is_valid.
 
 
 ##### Poller
+
 The poller uses an ioloop to test the expiration status and other factors of the SSL certificate, and check the whois record for the domains, which are contained within it's database.  The time between checks is determined by a configurable value, but by default is 24 hours.  When the check runs, it verifies that it's been at least that long since the last time it was checked by comparing the current time to the lastcheck field.
 
 

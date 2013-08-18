@@ -1,0 +1,2 @@
+python-devel.`getconf LONG_BIT`
+postgresql-libs

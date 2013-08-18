@@ -15,7 +15,7 @@ class Worker(threading.Thread):
 class ThreadHandler(BaseHandler):
     @asynchronous
     def get(self):
-        self.load_json()
+        self.printblah()
         Worker(self.worker_done).start()
 
     def worker_done(self, value):

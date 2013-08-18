@@ -14,6 +14,6 @@ class BaseHandler(tornado.web.RequestHandler):
     """A class to collect common handler methods - all other handlers should
 subclass this one.
 """
-    def load_json(self):
+    def printblah(self):
         print "blahhhhhh"
 

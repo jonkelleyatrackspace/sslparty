@@ -49,7 +49,7 @@ for result in od['results']['target']:
     print "---- EXPIRE INFO ----"
     print " notAfter=\t\t\t" + result['certinfo']['certificate']['validity']['notAfter']
     print " notBefore=\t\t\t" + result['certinfo']['certificate']['validity']['notBefore']
-
+    print " serial=\t\t\t" + result['certinfo']['certificate']['serialNumber']
     # TODO HELPFUL TO INSPECT XXX XXX XXX XXX XXX XXX
     #print " xxxxxxxxxxxxxxxx=\t\t" + str( json.dumps(result['certinfo']['certificate']['subjectPublicKeyInfo'], indent=3) )
 

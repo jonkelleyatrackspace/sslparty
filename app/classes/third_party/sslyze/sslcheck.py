@@ -5,52 +5,96 @@ class pullreport(object):
     """ This class is a wrapper for the ssl2json fork of sslyze. This should probably be refactored to a more generalized wrapper that works differently
         but this slower method will probably be acceptable for life. Who oughta need more then 640k mem?  -jonk
     """
-    import time # To get time.time() epoch expr
-    import ssl # To convert time expression to unix epoch
     def __init__(self,target_list=None,shared_settings=None):
         self.outdict = ssl2json.get(target_list,shared_settings)['document']
 
     def get_dict(self):
         return self.outdict
+    def get_dictbyhost(self):
+        """ Builds a dict per domain as key """
+        coreresultdict = self.get_dict()['results']['target']
+        failedresultdict = self.get_dict()['invalidTargets']
+        finalobject = {} # Final return
+        i = 0
+        for res in coreresultdict:
+            hostport = res['@host']+':'+res['@port']
+            finalobject[hostport] = coreresultdict[i]
+            i += 1
 
-    def _is_your_epoch_before_now(self,input):
-        """ Returns true if your EPOCH input is before CURRENT epoch
-                else FALSE
-        """
-        pass
-    def _is_your_epoch_after_now(self,input):
-        """ Returns true if your EPOCH input is after CURRENT epoch
-                else FALSE
-        """ 
-        pass
+        for item in failedresultdict['invalidTarget']: # Scoop up domains in error state and add error dict.
+           finalobject[item['#text']] = { 'error' : item['@error'] }
 
+        return finalobject
     def _get_epoch_from_ssltime(self,sslstamp):
         """ Takes SSL stamp from SSL library and simply returns a unix epoch
         Private method.
         """
         import ssl
-        pass
-    def get_validityperiod(self):
+        return int(ssl.cert_time_to_seconds(sslstamp))
+    def build_report(self):
 
         """ Returns a dict { 'notBefore' : '', 'notAfter' : '' }
         """
-        def compare_now_to_time(time,delta):
-            """ First arg is time to compare to NOW
-                Second aerg is if you want to compare if time is OLDER than now, or NEWER than now.
-            """
-            pass
+        import time
         coreresultdict = self.get_dict()['results']['target']
         failedresultdict = self.get_dict()['invalidTargets']
         finalobject = {} # Final return
         for res in coreresultdict:
             hostport = res['@host']+':'+res['@port']
+            finalobject[hostport] = {}
+            
+            finalobject[hostport]['ipAddr'] = res['@ip']
+            
+            # BUILDS REPORT FOR SSL VALIDITY
             validNotBefore = res['certinfo']['certificate']['validity']['notBefore']
             validNotAfter = res['certinfo']['certificate']['validity']['notAfter']
-            finalobject[hostport] = { 
-                "validNotBefore" : { 'time' : validNotBefore, 'epoch' : '000' } , 
-                'validNotAfter' : { 'time' : validNotAfter, 'epoch' : '000' } 
-                }
+            valid = "False"
+            timeNow = int(time.time())
+            if self._get_epoch_from_ssltime(validNotBefore) <= timeNow:
+                valid = "True"
+            if self._get_epoch_from_ssltime(validNotAfter) >= timeNow:
+                valid = "True"
 
+            expiresin = int(self._get_epoch_from_ssltime(validNotAfter) - time.time())
+            expiresindays = expiresin / 86400
+            finalobject[hostport]['certValidity'] = {
+                'daysUntilExpire' : expiresindays,
+                'validForNow' : valid ,
+                'dateRange' : {
+                                "validNotBefore" : { 'stamp' : validNotBefore, 'epoch' : self._get_epoch_from_ssltime(validNotBefore) } , 
+                                'validNotAfter' : { 'stamp' : validNotAfter, 'epoch' : self._get_epoch_from_ssltime(validNotAfter) } ,
+                            },
+                }
+            
+            # Trustworthyness
+            doesCertMatchHostname = "False"
+            if res['certinfo']['certificate']['subject']['commonName'] == res['@host']:
+                doesCertMatchHostname = "True"
+            finalobject[hostport]['certReputation'] = {
+                'certMatchesHostname' : doesCertMatchHostname,
+                'extendedValidation' : res['certinfo']['certificate']['@isExtendedValidation'] ,
+                'mozillaTrust' : { 'trusted' : res['certinfo']['certificate']['@isTrustedByMozillaCAStore'] , 
+                                    'whyNotMessage' : res['certinfo']['certificate']['@reasonWhyNotTrusted'] }
+            }
+
+            # Frivilous Data
+            sha1                = res['certinfo']['certificate']['@sha1Fingerprint']
+            serialNumber        = cryptoKeyLen = res['certinfo']['certificate']['serialNumber']
+            certVersion         = res['certinfo']['certificate']['version']
+            cryptoAlgorythm     = res['certinfo']['certificate']['subjectPublicKeyInfo']['publicKeyAlgorithm']
+            cryptoKeyLen        = res['certinfo']['certificate']['subjectPublicKeyInfo']['publicKeySize']
+            issuerCN            = res['certinfo']['certificate']['issuer']['commonName']
+            subject             = res['certinfo']['certificate']['subject']
+            finalobject[hostport]['certFields'] = {
+                'sha1' : sha1,
+                'serial' : serialNumber,
+                'version' : certVersion,
+                'crypto' : { 'algorythm' : cryptoAlgorythm, 
+                             'keylen' : cryptoKeyLen  },
+                 'issuer' : issuerCN,
+            }
+
+        # Failed item report.
         for item in failedresultdict['invalidTarget']: # Scoop up domains in error state and add error dict.
            finalobject[item['#text']] = { 'error' : item['@error'] }
 
@@ -83,7 +127,7 @@ buildTempl = {} # Represents the
 import json
 
 print "GET EXPIRE TIMES"
-print json.dumps(sslvalidator.get_validityperiod(), indent=3)
+print json.dumps(sslvalidator.build_report(), indent=4)
 
 
 

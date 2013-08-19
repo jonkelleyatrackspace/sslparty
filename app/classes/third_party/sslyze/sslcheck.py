@@ -1,57 +1,499 @@
-import ssl2json
+import ssl2json # Rename this module to ssl2dict actually
 import json
 
-target_list = ['www.pcwebshop.co.uk','identity.api.rackspacecloud.com:443','manage.rackspacecloud.com:443','google.com:443']
+class pullreport(object):
+    """ This class is a wrapper for the ssl2json fork of sslyze. This should probably be refactored to a more generalized wrapper that works differently
+        but this slower method will probably be acceptable for life. Who oughta need more then 640k mem?  -jonk
+    """
+    import time # To get time.time() epoch expr
+    import ssl # To convert time expression to unix epoch
+    def __init__(self,target_list=None,shared_settings=None):
+        self.outdict = ssl2json.get(target_list,shared_settings)['document']
 
+    def get_dict(self):
+        return self.outdict
+
+    def _is_your_epoch_before_now(self,input):
+        """ Returns true if your EPOCH input is before CURRENT epoch
+                else FALSE
+        """
+        pass
+    def _is_your_epoch_after_now(self,input):
+        """ Returns true if your EPOCH input is after CURRENT epoch
+                else FALSE
+        """ 
+        pass
+
+    def _get_epoch_from_ssltime(self,sslstamp):
+        """ Takes SSL stamp from SSL library and simply returns a unix epoch
+        Private method.
+        """
+        import ssl
+        pass
+    def get_validityperiod(self):
+
+        """ Returns a dict { 'notBefore' : '', 'notAfter' : '' }
+        """
+        def compare_now_to_time(time,delta):
+            """ First arg is time to compare to NOW
+                Second aerg is if you want to compare if time is OLDER than now, or NEWER than now.
+            """
+            pass
+        coreresultdict = self.get_dict()['results']['target']
+        failedresultdict = self.get_dict()['invalidTargets']
+        finalobject = {} # Final return
+        for res in coreresultdict:
+            hostport = res['@host']+':'+res['@port']
+            validNotBefore = res['certinfo']['certificate']['validity']['notBefore']
+            validNotAfter = res['certinfo']['certificate']['validity']['notAfter']
+            finalobject[hostport] = { 
+                "validNotBefore" : { 'time' : validNotBefore, 'epoch' : '000' } , 
+                'validNotAfter' : { 'time' : validNotAfter, 'epoch' : '000' } 
+                }
+
+        for item in failedresultdict['invalidTarget']: # Scoop up domains in error state and add error dict.
+           finalobject[item['#text']] = { 'error' : item['@error'] }
+
+        return finalobject
+
+
+
+target_list = ['aolsss.com:80','aolsss.com:81','www.pcwebshop.co.uk','identity.api.rackspacecloud.com:443','manage.rackspacecloud.com:443','google.com:443']
 shared_settings = {
-'certinfo':     'full',        'starttls':     None,       'resum':        None,
-'resum_rate':   None,           'http_get':     None,       'xml_file':     '/tmp/xy', 
-'compression':  None,           'tlsv1':        None,       'targets_in':   None, 
-'cert':         None,           'https_tunnel_port': None,  'keyform':      1, 
-'hsts':         None,           'sslv3':        None,       'sslv2':        None, 
-'https_tunnel': None,           'sni':          None,       'https_tunnel_host': None, 
-'regular':      None,           'key':          None,       'reneg':        None, 
-'tlsv1_2':      None,           'tlsv1_1':      None,       'hide_rejected_ciphers': None,
-'keypass':      '',             'nb_processes': 1,          'certform':     1, 
-'timeout':      5,              'xmpp_to':      None}
+        'certinfo':     'full',        'starttls':     None,       'resum':        None,
+        'resum_rate':   None,           'http_get':     None,       'xml_file':     '/tmp/xy', 
+        'compression':  None,           'tlsv1':        None,       'targets_in':   None, 
+        'cert':         None,           'https_tunnel_port': None,  'keyform':      1, 
+        'hsts':         None,           'sslv3':        None,       'sslv2':        None, 
+        'https_tunnel': None,           'sni':          None,       'https_tunnel_host': None, 
+        'regular':      None,           'key':          None,       'reneg':        None, 
+        'tlsv1_2':      None,           'tlsv1_1':      None,       'hide_rejected_ciphers': None,
+        'keypass':      '',             'nb_processes': 1,          'certform':     1, 
+        'timeout':      5,              'xmpp_to':      None}
 
-od = ssl2json.get(target_list,shared_settings)['document']
-print "TIME TAKEN: " + od['results']['@totalScanTime']
 
-for result in od['results']['target']:
-    print "------------------------------------------------------------------------------------------------"
-    print ">>>>>> " + result['@host'] + ":" + result['@port'] + "  (" +  result['@ip'] + ")"
-    print " commonName=\t\t\t" + result['certinfo']['certificate']['subject']['commonName']
-    
-    # Monkey patch as the library's internal function is broke on some certificates. WTF?
-    # The .replace("*.*,"") was tacked on to replace wildcard certs beginning with *. with nothing, so
-    #   it matches the actual socket connect host, and validates to true.
-    if result['certinfo']['certificate']['subject']['commonName'].replace("*.", "") == result['@host']:
-        result['certinfo']['certificate']['@hasMatchingHostname'] = "True"
-    else:
-        result['certinfo']['certificate']['@hasMatchingHostname'] = "False"
-    print " hasMatchingHostname=\t\t" + result['certinfo']['certificate']['@hasMatchingHostname']
-    print " isExtendedValidation=\t\t" + result['certinfo']['certificate']['@isExtendedValidation']
-    print " isTrustedByMozillaCAStore=\t" + result['certinfo']['certificate']['@isTrustedByMozillaCAStore']
-    print " reasonWhyNotTrusted=\t\t" + result['certinfo']['certificate']['@reasonWhyNotTrusted']
-    print " sha1Fingerprint=\t\t" + result['certinfo']['certificate']['@sha1Fingerprint']
-    #print " certificate=\t\t" + result['certinfo']['certificate']['@asPEM']
-    try:
-        caissuer = result['certinfo']['certificate']['extensions']['AuthorityInformationAccess']['CAIssuers']['URI']['listEntry']
-        print " CAIssuers=\t\t\t" + caissuer
-    except:
-        caissuer = "Null"
-        print " CAIssuers=\t\t\t" + caissuer
-    print " issuer=\t\t\t" + result['certinfo']['certificate']['issuer']['commonName']
-    print "---- CRYPTO ----"
-    print " publicKeyAlgorithm=\t\t" + result['certinfo']['certificate']['subjectPublicKeyInfo']['publicKeyAlgorithm']
-    print " publicKeySize=\t\t\t" + result['certinfo']['certificate']['subjectPublicKeyInfo']['publicKeySize']
-    print "---- EXPIRE INFO ----"
-    print " notAfter=\t\t\t" + result['certinfo']['certificate']['validity']['notAfter']
-    print " notBefore=\t\t\t" + result['certinfo']['certificate']['validity']['notBefore']
-    print " serial=\t\t\t" + result['certinfo']['certificate']['serialNumber']
-    # TODO HELPFUL TO INSPECT XXX XXX XXX XXX XXX XXX
-    #print " xxxxxxxxxxxxxxxx=\t\t" + str( json.dumps(result['certinfo']['certificate']['subjectPublicKeyInfo'], indent=3) )
+
+sslvalidator = pullreport(target_list,shared_settings)
+instdict = sslvalidator.get_dict()
+        
+        
+buildTempl = {} # Represents the 
+
+
+import json
+
+print "GET EXPIRE TIMES"
+print json.dumps(sslvalidator.get_validityperiod(), indent=3)
+
+
+
+
+"""
+{
+   "@MyPurpose": "To send you a dictionary with json back. Cool huh?", 
+   "@SSLyzeVersion": "ohai v0.1 (SSLyze_v0.7)", 
+   "@SSLyzeWeb": "https://github.com/jonkelleyatrackspace/sslyze", 
+   "@title": "SSLyze Scan Results", 
+   "invalidTargets": null, 
+   "results": {
+      "@defaultTimeout": "5", 
+      "@httpsTunnel": "None", 
+      "@startTLS": "None", 
+      "@totalScanTime": "1.22882795334", 
+      "target": [
+         {
+            "@host": "google.com", 
+            "@ip": "74.125.227.7", 
+            "@port": "443", 
+            "certinfo": {
+               "@argument": "full", 
+               "@title": "Certificate", 
+               "certificate": {
+                  "@hasMatchingHostname": "True", 
+                  "@isExtendedValidation": "False", 
+                  "@isTrustedByMozillaCAStore": "True", 
+                  "@reasonWhyNotTrusted": "ok", 
+                  "@sha1Fingerprint": "39dc179fc4dc6732e2025ab9c418d79d4e1c6e94", 
+                  "asPEM": "-----BEGIN CERTIFICATE-----\nMIIGKjCCBZOgAwIBAgIKEiIxuQABAACSsTANBgkqhkiG9w0BAQUFADBGMQswCQYD\nVQQGEwJVUzETMBEGA1UEChMKR29vZ2xlIEluYzEiMCAGA1UEAxMZR29vZ2xlIElu\ndGVybmV0IEF1dGhvcml0eTAeFw0xMzA3MzExMTQwMzRaFw0xMzEwMzEyMzU5NTla\nMGYxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1N\nb3VudGFpbiBWaWV3MRMwEQYDVQQKEwpHb29nbGUgSW5jMRUwEwYDVQQDFAwqLmdv\nb2dsZS5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAL+RiEjTLckQO7tb\nT9lIFriDh3P+zkRJNWxZYuRnwKcJadgN9pMaf1taf2HkjrskArM1QIANnOPOByvA\nJp4HYr6NJLD2OPOvLvYv98qLdkKTKjt/b2H6axfGiJY6g9QfQtc81zc/tL51vknz\nvSGaqOsAeJ0SO9SldqM7X/lDYkfTAgMBAAGjggP9MIID+TAdBgNVHSUEFjAUBggr\nBgEFBQcDAQYIKwYBBQUHAwIwHQYDVR0OBBYEFD0slhILWX0Vi0EOxThOwOUUqKcJ\nMB8GA1UdIwQYMBaAFL/AMOv1QxE+Z7qekfv8atrjaxIkMFsGA1UdHwRUMFIwUKBO\noEyGSmh0dHA6Ly93d3cuZ3N0YXRpYy5jb20vR29vZ2xlSW50ZXJuZXRBdXRob3Jp\ndHkvR29vZ2xlSW50ZXJuZXRBdXRob3JpdHkuY3JsMGYGCCsGAQUFBwEBBFowWDBW\nBggrBgEFBQcwAoZKaHR0cDovL3d3dy5nc3RhdGljLmNvbS9Hb29nbGVJbnRlcm5l\ndEF1dGhvcml0eS9Hb29nbGVJbnRlcm5ldEF1dGhvcml0eS5jcnQwDAYDVR0TAQH/\nBAIwADCCAsMGA1UdEQSCArowggK2ggwqLmdvb2dsZS5jb22CDSouYW5kcm9pZC5j\nb22CFiouYXBwZW5naW5lLmdvb2dsZS5jb22CEiouY2xvdWQuZ29vZ2xlLmNvbYIW\nKi5nb29nbGUtYW5hbHl0aWNzLmNvbYILKi5nb29nbGUuY2GCCyouZ29vZ2xlLmNs\ngg4qLmdvb2dsZS5jby5pboIOKi5nb29nbGUuY28uanCCDiouZ29vZ2xlLmNvLnVr\ngg8qLmdvb2dsZS5jb20uYXKCDyouZ29vZ2xlLmNvbS5hdYIPKi5nb29nbGUuY29t\nLmJygg8qLmdvb2dsZS5jb20uY2+CDyouZ29vZ2xlLmNvbS5teIIPKi5nb29nbGUu\nY29tLnRygg8qLmdvb2dsZS5jb20udm6CCyouZ29vZ2xlLmRlggsqLmdvb2dsZS5l\nc4ILKi5nb29nbGUuZnKCCyouZ29vZ2xlLmh1ggsqLmdvb2dsZS5pdIILKi5nb29n\nbGUubmyCCyouZ29vZ2xlLnBsggsqLmdvb2dsZS5wdIIPKi5nb29nbGVhcGlzLmNu\nghQqLmdvb2dsZWNvbW1lcmNlLmNvbYINKi5nc3RhdGljLmNvbYIMKi51cmNoaW4u\nY29tghAqLnVybC5nb29nbGUuY29tghYqLnlvdXR1YmUtbm9jb29raWUuY29tgg0q\nLnlvdXR1YmUuY29tghYqLnlvdXR1YmVlZHVjYXRpb24uY29tggsqLnl0aW1nLmNv\nbYILYW5kcm9pZC5jb22CBGcuY2+CBmdvby5nbIIUZ29vZ2xlLWFuYWx5dGljcy5j\nb22CCmdvb2dsZS5jb22CEmdvb2dsZWNvbW1lcmNlLmNvbYIKdXJjaGluLmNvbYII\neW91dHUuYmWCC3lvdXR1YmUuY29tghR5b3V0dWJlZWR1Y2F0aW9uLmNvbTANBgkq\nhkiG9w0BAQUFAAOBgQClna2RVEEVPusOayhKQ0/JUSBkvL8TflvmgIL/L/4SXsPy\nAxcOwHBv0vfyX8cos1thOkyuSHEbuKqANW9BESg9dmqYWIG6hSWcVkbsqiaDS1CI\nkO1nUjlwRJ+udBYcQPy8yBgJhTQ/76rRYyXoiTHr5SoV25gQrSFcWUSEum9C5Q==\n-----END CERTIFICATE-----", 
+                  "subjectPublicKeyInfo": {
+                     "publicKey": {
+                        "modulus": "00:bf:91:88:48:d3:2d:c9:10:3b:bb:5b:4f:d9:48:16:b8:83:87:73:fe:ce:44:49:35:6c:59:62:e4:67:c0:a7:09:69:d8:0d:f6:93:1a:7f:5b:5a:7f:61:e4:8e:bb:24:02:b3:35:40:80:0d:9c:e3:ce:07:2b:c0:26:9e:07:62:be:8d:24:b0:f6:38:f3:af:2e:f6:2f:f7:ca:8b:76:42:93:2a:3b:7f:6f:61:fa:6b:17:c6:88:96:3a:83:d4:1f:42:d7:3c:d7:37:3f:b4:be:75:be:49:f3:bd:21:9a:a8:eb:00:78:9d:12:3b:d4:a5:76:a3:3b:5f:f9:43:62:47:d3", 
+                        "exponent": "65537"
+                     }, 
+                     "publicKeyAlgorithm": "rsaEncryption", 
+                     "publicKeySize": "1024 bit"
+                  }, 
+                  "version": "2", 
+                  "extensions": {
+                     "X509v3SubjectKeyIdentifier": "3D:2C:96:12:0B:59:7D:15:8B:41:0E:C5:38:4E:C0:E5:14:A8:A7:09", 
+                     "X509v3ExtendedKeyUsage": {
+                        "TLSWebClientAuthentication": null, 
+                        "TLSWebServerAuthentication": null
+                     }, 
+                     "AuthorityInformationAccess": {
+                        "CAIssuers": {
+                           "URI": {
+                              "listEntry": "http://www.gstatic.com/GoogleInternetAuthority/GoogleInternetAuthority.crt"
+                           }
+                        }
+                     }, 
+                     "X509v3CRLDistributionPoints": {
+                        "FullName": {
+                           "listEntry": null
+                        }, 
+                        "URI": {
+                           "listEntry": "http://www.gstatic.com/GoogleInternetAuthority/GoogleInternetAuthority.crl"
+                        }
+                     }, 
+                     "X509v3BasicConstraints": "CA:FALSE", 
+                     "X509v3SubjectAlternativeName": {
+                        "DNS": {
+                           "listEntry": [
+                              "*.google.com", 
+                              "*.android.com", 
+                              "*.appengine.google.com", 
+                              "*.cloud.google.com", 
+                              "*.google-analytics.com", 
+                              "*.google.ca", 
+                              "*.google.cl", 
+                              "*.google.co.in", 
+                              "*.google.co.jp", 
+                              "*.google.co.uk", 
+                              "*.google.com.ar", 
+                              "*.google.com.au", 
+                              "*.google.com.br", 
+                              "*.google.com.co", 
+                              "*.google.com.mx", 
+                              "*.google.com.tr", 
+                              "*.google.com.vn", 
+                              "*.google.de", 
+                              "*.google.es", 
+                              "*.google.fr", 
+                              "*.google.hu", 
+                              "*.google.it", 
+                              "*.google.nl", 
+                              "*.google.pl", 
+                              "*.google.pt", 
+                              "*.googleapis.cn", 
+                              "*.googlecommerce.com", 
+                              "*.gstatic.com", 
+                              "*.urchin.com", 
+                              "*.url.google.com", 
+                              "*.youtube-nocookie.com", 
+                              "*.youtube.com", 
+                              "*.youtubeeducation.com", 
+                              "*.ytimg.com", 
+                              "android.com", 
+                              "g.co", 
+                              "goo.gl", 
+                              "google-analytics.com", 
+                              "google.com", 
+                              "googlecommerce.com", 
+                              "urchin.com", 
+                              "youtu.be", 
+                              "youtube.com", 
+                              "youtubeeducation.com"
+                           ]
+                        }
+                     }, 
+                     "X509v3AuthorityKeyIdentifier": "keyid:BF:C0:30:EB:F5:43:11:3E:67:BA:9E:91:FB:FC:6A:DA:E3:6B:12:24"
+                  }, 
+                  "signatureValue": "a5:9d:ad:91:54:41:15:3e:eb:0e:6b:28:4a:43:4f:c9:51:20:64:bc:bf:13:7e:5b:e6:80:82:ff:2f:fe:12:5e:c3:f2:03:17:0e:c0:70:6f:d2:f7:f2:5f:c7:28:b3:5b:61:3a:4c:ae:48:71:1b:b8:aa:80:35:6f:41:11:28:3d:76:6a:98:58:81:ba:85:25:9c:56:46:ec:aa:26:83:4b:50:88:90:ed:67:52:39:70:44:9f:ae:74:16:1c:40:fc:bc:c8:18:09:85:34:3f:ef:aa:d1:63:25:e8:89:31:eb:e5:2a:15:db:98:10:ad:21:5c:59:44:84:ba:6f:42:e5", 
+                  "signatureAlgorithm": "sha1WithRSAEncryption", 
+                  "serialNumber": "122231B90001000092B1", 
+                  "subject": {
+                     "countryName": "US", 
+                     "commonName": "*.google.com", 
+                     "organizationName": "Google Inc", 
+                     "localityName": "Mountain View", 
+                     "stateOrProvinceName": "California"
+                  }, 
+                  "validity": {
+                     "notAfter": "Oct 31 23:59:59 2013 GMT", 
+                     "notBefore": "Jul 31 11:40:34 2013 GMT"
+                  }, 
+                  "issuer": {
+                     "countryName": "US", 
+                     "commonName": "Google Internet Authority", 
+                     "organizationName": "Google Inc"
+                  }
+               }, 
+               "ocspStapling": {
+                  "@error": "Server did not send back an OCSP response"
+               }
+            }
+         }, 
+         {
+            "@host": "identity.api.rackspacecloud.com", 
+            "@ip": "72.3.138.129", 
+            "@port": "443", 
+            "certinfo": {
+               "@argument": "full", 
+               "@title": "Certificate", 
+               "certificate": {
+                  "@hasMatchingHostname": "False", 
+                  "@isExtendedValidation": "False", 
+                  "@isTrustedByMozillaCAStore": "True", 
+                  "@reasonWhyNotTrusted": "ok", 
+                  "@sha1Fingerprint": "5b7fa3290dc992f21a0ce5962dc5d2548b868de3", 
+                  "asPEM": "-----BEGIN CERTIFICATE-----\nMIIEWjCCA0KgAwIBAgIQLFXkvd/ICT26gEgT36jh0TANBgkqhkiG9w0BAQUFADBe\nMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMVGhhd3RlLCBJbmMuMR0wGwYDVQQLExRE\nb21haW4gVmFsaWRhdGVkIFNTTDEZMBcGA1UEAxMQVGhhd3RlIERWIFNTTCBDQTAe\nFw0xMTExMTQwMDAwMDBaFw0xNjExMTIyMzU5NTlaMIHQMSgwJgYDVQQKFB9pZGVu\ndGl0eS5hcGkucmFja3NwYWNlY2xvdWQuY29tMTswOQYDVQQLEzJHbyB0byBodHRw\nczovL3d3dy50aGF3dGUuY29tL3JlcG9zaXRvcnkvaW5kZXguaHRtbDEiMCAGA1UE\nCxMZVGhhd3RlIFNTTDEyMyBjZXJ0aWZpY2F0ZTEZMBcGA1UECxMQRG9tYWluIFZh\nbGlkYXRlZDEoMCYGA1UEAxQfaWRlbnRpdHkuYXBpLnJhY2tzcGFjZWNsb3VkLmNv\nbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJ/10+uJIDxCtoknjR0i\nK4/rSVkvUFFEWGQEkAknn8owjUDxLCiqBgP261qascPdXASDVDgQQ+iiv9G/xiOX\nrgKMwc2fnwaZFWg7xFr/F2nVSEdVUrbAhjizstdGcKF3bvpl9N2ke29BWa+iNXIc\nafTzAMYVkKR3BoL5yd4O+SpfXI5yjDLhMDkn/6j7Cy3Qm3PLA6uTeE9aRvsB53C+\nt1tmDmfd9BJV8yKTVcUt7/Bq8ekmmV7vNKFAQ69BTO2IpEGDLDjDs4I7Zcm7SP+i\nYrzeJC6iCmh/j9u0yVx/JrDdp9tfjbn0aQXbqgb7XfNocHyzE6pc+jACsIBQqGya\nQIkCAwEAAaOBoDCBnTAMBgNVHRMBAf8EAjAAMDoGA1UdHwQzMDEwL6AtoCuGKWh0\ndHA6Ly9zdnItZHYtY3JsLnRoYXd0ZS5jb20vVGhhd3RlRFYuY3JsMB0GA1UdJQQW\nMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAyBggrBgEFBQcBAQQmMCQwIgYIKwYBBQUH\nMAGGFmh0dHA6Ly9vY3NwLnRoYXd0ZS5jb20wDQYJKoZIhvcNAQEFBQADggEBAFPv\nYLTAqkcjJSOivymGZW2vsLK4Uor5kWO/2fvq2ZM4JvsTEejw3bhffFzH6KBXdVWE\nTahKjfBxtR3uRn4DE3gF4Udproz2Be/ty6zE87t/XJ2LZ2djFTp0zY5fCqZJdEhr\nb5fpxJAJfxGrINDiqG4arkVgIETS8cUMt44UmPBso35qEQzdyE+nNxGe3kYRT6a+\n/UAkq13xg+QdyCaGQtGbVYdANdCGvKPVDRJcfhlYr30WXYyou28Izcng0aVZM47L\ngz1twTumDKfrtl1AH5it8VNjp5I5/AG/CoV2RNPs7tGYJpd5eQScQoaYtPeJ+Qcy\nB9dczFr512paOEj8KYI=\n-----END CERTIFICATE-----", 
+                  "subjectPublicKeyInfo": {
+                     "publicKey": {
+                        "modulus": "00:9f:f5:d3:eb:89:20:3c:42:b6:89:27:8d:1d:22:2b:8f:eb:49:59:2f:50:51:44:58:64:04:90:09:27:9f:ca:30:8d:40:f1:2c:28:aa:06:03:f6:eb:5a:9a:b1:c3:dd:5c:04:83:54:38:10:43:e8:a2:bf:d1:bf:c6:23:97:ae:02:8c:c1:cd:9f:9f:06:99:15:68:3b:c4:5a:ff:17:69:d5:48:47:55:52:b6:c0:86:38:b3:b2:d7:46:70:a1:77:6e:fa:65:f4:dd:a4:7b:6f:41:59:af:a2:35:72:1c:69:f4:f3:00:c6:15:90:a4:77:06:82:f9:c9:de:0e:f9:2a:5f:5c:8e:72:8c:32:e1:30:39:27:ff:a8:fb:0b:2d:d0:9b:73:cb:03:ab:93:78:4f:5a:46:fb:01:e7:70:be:b7:5b:66:0e:67:dd:f4:12:55:f3:22:93:55:c5:2d:ef:f0:6a:f1:e9:26:99:5e:ef:34:a1:40:43:af:41:4c:ed:88:a4:41:83:2c:38:c3:b3:82:3b:65:c9:bb:48:ff:a2:62:bc:de:24:2e:a2:0a:68:7f:8f:db:b4:c9:5c:7f:26:b0:dd:a7:db:5f:8d:b9:f4:69:05:db:aa:06:fb:5d:f3:68:70:7c:b3:13:aa:5c:fa:30:02:b0:80:50:a8:6c:9a:40:89", 
+                        "exponent": "65537"
+                     }, 
+                     "publicKeyAlgorithm": "rsaEncryption", 
+                     "publicKeySize": "2048 bit"
+                  }, 
+                  "version": "2", 
+                  "extensions": {
+                     "X509v3CRLDistributionPoints": {
+                        "FullName": {
+                           "listEntry": null
+                        }, 
+                        "URI": {
+                           "listEntry": "http://svr-dv-crl.thawte.com/ThawteDV.crl"
+                        }
+                     }, 
+                     "X509v3ExtendedKeyUsage": {
+                        "TLSWebClientAuthentication": null, 
+                        "TLSWebServerAuthentication": null
+                     }, 
+                     "AuthorityInformationAccess": {
+                        "OCSP": {
+                           "URI": {
+                              "listEntry": "http://ocsp.thawte.com"
+                           }
+                        }
+                     }, 
+                     "X509v3BasicConstraints": "CA:FALSE"
+                  }, 
+                  "signatureValue": "53:ef:60:b4:c0:aa:47:23:25:23:a2:bf:29:86:65:6d:af:b0:b2:b8:52:8a:f9:91:63:bf:d9:fb:ea:d9:93:38:26:fb:13:11:e8:f0:dd:b8:5f:7c:5c:c7:e8:a0:57:75:55:84:4d:a8:4a:8d:f0:71:b5:1d:ee:46:7e:03:13:78:05:e1:47:69:ae:8c:f6:05:ef:ed:cb:ac:c4:f3:bb:7f:5c:9d:8b:67:67:63:15:3a:74:cd:8e:5f:0a:a6:49:74:48:6b:6f:97:e9:c4:90:09:7f:11:ab:20:d0:e2:a8:6e:1a:ae:45:60:20:44:d2:f1:c5:0c:b7:8e:14:98:f0:6c:a3:7e:6a:11:0c:dd:c8:4f:a7:37:11:9e:de:46:11:4f:a6:be:fd:40:24:ab:5d:f1:83:e4:1d:c8:26:86:42:d1:9b:55:87:40:35:d0:86:bc:a3:d5:0d:12:5c:7e:19:58:af:7d:16:5d:8c:a8:bb:6f:08:cd:c9:e0:d1:a5:59:33:8e:cb:83:3d:6d:c1:3b:a6:0c:a7:eb:b6:5d:40:1f:98:ad:f1:53:63:a7:92:39:fc:01:bf:0a:85:76:44:d3:ec:ee:d1:98:26:97:79:79:04:9c:42:86:98:b4:f7:89:f9:07:32:07:d7:5c:cc:5a:f9:d7:6a:5a:38:48:fc:29:82", 
+                  "signatureAlgorithm": "sha1WithRSAEncryption", 
+                  "serialNumber": "2C55E4BDDFC8093DBA804813DFA8E1D1", 
+                  "subject": {
+                     "commonName": "identity.api.rackspacecloud.com", 
+                     "organizationalUnitName": "Domain Validated", 
+                     "organizationName": "identity.api.rackspacecloud.com"
+                  }, 
+                  "validity": {
+                     "notAfter": "Nov 12 23:59:59 2016 GMT", 
+                     "notBefore": "Nov 14 00:00:00 2011 GMT"
+                  }, 
+                  "issuer": {
+                     "countryName": "US", 
+                     "commonName": "Thawte DV SSL CA", 
+                     "organizationalUnitName": "Domain Validated SSL", 
+                     "organizationName": "Thawte, Inc."
+                  }
+               }, 
+               "ocspStapling": {
+                  "@error": "Server did not send back an OCSP response"
+               }
+            }
+         }, 
+         {
+            "@host": "manage.rackspacecloud.com", 
+            "@ip": "67.192.1.7", 
+            "@port": "443", 
+            "certinfo": {
+               "@argument": "full", 
+               "@title": "Certificate", 
+               "certificate": {
+                  "@hasMatchingHostname": "True", 
+                  "@isExtendedValidation": "True", 
+                  "@isTrustedByMozillaCAStore": "True", 
+                  "@reasonWhyNotTrusted": "ok", 
+                  "@sha1Fingerprint": "3ffda03a9ac88bc40f900cba7b9772d7ab35928d", 
+                  "asPEM": "-----BEGIN CERTIFICATE-----\nMIIFXDCCBESgAwIBAgIQcK96C5JilortXQKzTOxv/zANBgkqhkiG9w0BAQUFADCB\nizELMAkGA1UEBhMCVVMxFTATBgNVBAoTDHRoYXd0ZSwgSW5jLjE5MDcGA1UECxMw\nVGVybXMgb2YgdXNlIGF0IGh0dHBzOi8vd3d3LnRoYXd0ZS5jb20vY3BzIChjKTA2\nMSowKAYDVQQDEyF0aGF3dGUgRXh0ZW5kZWQgVmFsaWRhdGlvbiBTU0wgQ0EwHhcN\nMTMwNzA1MDAwMDAwWhcNMTUwODA0MjM1OTU5WjCB1TETMBEGCysGAQQBgjc8AgED\nEwJVUzEZMBcGCysGAQQBgjc8AgECFAhEZWxhd2FyZTEdMBsGA1UEDxMUUHJpdmF0\nZSBPcmdhbml6YXRpb24xEDAOBgNVBAUTBzQzNzc2ODcxCzAJBgNVBAYTAlVTMQ4w\nDAYDVQQIFAVUZXhhczEUMBIGA1UEBxQLU2FuIEFudG9uaW8xGzAZBgNVBAoUElJh\nY2tzcGFjZSBVUywgSW5jLjEiMCAGA1UEAxQZbWFuYWdlLnJhY2tzcGFjZWNsb3Vk\nLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAN0U9YmB5NNS9iDZ\nR+2zcruIOcta/HIQHxc/q31HyURLq8b0ky78Q1MsVTEZKiN5lnXaB+Lx0sFRZTCU\nUeMaixBajjGRmuoIYwMp+PgrZ07qEAMQsVkEULWqtPTyYZimafMq64QGcnItw3r3\nnYZfJF5BwKPgp0u1w5HllHoF1ViraZlBdAFJs3M26c4LcFtq4Ha2vlX4oTPYX0aG\n0S5jrebPIxYVz3WUFHyl1UKKyd/axfbJyNxAwD5EkBwpWDKWFoBVDlCE33qm/JdN\n9I1zu6xtxne4VvPYJ2LHxOjUOfAfIz4xpRPLT7hw6+d6BIHfJd+2uATXjgmlyTff\nrxDITE0CAwEAAaOCAW4wggFqMCQGA1UdEQQdMBuCGW1hbmFnZS5yYWNrc3BhY2Vj\nbG91ZC5jb20wCQYDVR0TBAIwADAOBgNVHQ8BAf8EBAMCBaAwOQYDVR0fBDIwMDAu\noCygKoYoaHR0cDovL2NybC50aGF3dGUuY29tL1RoYXd0ZUVWQ0EyMDA2LmNybDBC\nBgNVHSAEOzA5MDcGC2CGSAGG+EUBBzABMCgwJgYIKwYBBQUHAgEWGmh0dHBzOi8v\nd3d3LnRoYXd0ZS5jb20vY3BzMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcD\nAjAfBgNVHSMEGDAWgBTNMuLyXSVHAqqPeUsy7gOZ/TBJ0TBoBggrBgEFBQcBAQRc\nMFowIgYIKwYBBQUHMAGGFmh0dHA6Ly9vY3NwLnRoYXd0ZS5jb20wNAYIKwYBBQUH\nMAKGKGh0dHA6Ly9jcmwudGhhd3RlLmNvbS9UaGF3dGVFVkNBMjAwNi5jZXIwDQYJ\nKoZIhvcNAQEFBQADggEBALL3Dl1pDrFxhwkR3h3664/Cp+RAAu/f2Tf8UHSw/K9v\nmfs3n8FJDAe/X5RZjmQsHGyVMMa1LOEtZmnyM3IWLG7Vi6gFe7PdB7MRbf4jllg3\nLwMncFkcMDUY0bt9dQnWdWUiEyzCP9c+rnzz9z8st+lS28vKTcGW4XIi1OBv5n1+\nMgiIJPAJGg6B0LZ21TdgY/vj/AhdJET/QcYkrwxGx/iHTkW/shUONVMo94FcQmMO\nsB1kn0loXhDVXRCIvn0nSdI6JGNi+jtJc1HpaKt3Dt1iGezcKhQxFfFXD4pyO59e\nBLGZ+1IR7E5pSd+1oXMX7qDLbta2aHCFYSM2zjqNC8w=\n-----END CERTIFICATE-----", 
+                  "subjectPublicKeyInfo": {
+                     "publicKey": {
+                        "modulus": "00:dd:14:f5:89:81:e4:d3:52:f6:20:d9:47:ed:b3:72:bb:88:39:cb:5a:fc:72:10:1f:17:3f:ab:7d:47:c9:44:4b:ab:c6:f4:93:2e:fc:43:53:2c:55:31:19:2a:23:79:96:75:da:07:e2:f1:d2:c1:51:65:30:94:51:e3:1a:8b:10:5a:8e:31:91:9a:ea:08:63:03:29:f8:f8:2b:67:4e:ea:10:03:10:b1:59:04:50:b5:aa:b4:f4:f2:61:98:a6:69:f3:2a:eb:84:06:72:72:2d:c3:7a:f7:9d:86:5f:24:5e:41:c0:a3:e0:a7:4b:b5:c3:91:e5:94:7a:05:d5:58:ab:69:99:41:74:01:49:b3:73:36:e9:ce:0b:70:5b:6a:e0:76:b6:be:55:f8:a1:33:d8:5f:46:86:d1:2e:63:ad:e6:cf:23:16:15:cf:75:94:14:7c:a5:d5:42:8a:c9:df:da:c5:f6:c9:c8:dc:40:c0:3e:44:90:1c:29:58:32:96:16:80:55:0e:50:84:df:7a:a6:fc:97:4d:f4:8d:73:bb:ac:6d:c6:77:b8:56:f3:d8:27:62:c7:c4:e8:d4:39:f0:1f:23:3e:31:a5:13:cb:4f:b8:70:eb:e7:7a:04:81:df:25:df:b6:b8:04:d7:8e:09:a5:c9:37:df:af:10:c8:4c:4d", 
+                        "exponent": "65537"
+                     }, 
+                     "publicKeyAlgorithm": "rsaEncryption", 
+                     "publicKeySize": "2048 bit"
+                  }, 
+                  "version": "2", 
+                  "extensions": {
+                     "X509v3ExtendedKeyUsage": {
+                        "TLSWebClientAuthentication": null, 
+                        "TLSWebServerAuthentication": null
+                     }, 
+                     "AuthorityInformationAccess": {
+                        "CAIssuers": {
+                           "URI": {
+                              "listEntry": "http://crl.thawte.com/ThawteEVCA2006.cer"
+                           }
+                        }, 
+                        "OCSP": {
+                           "URI": {
+                              "listEntry": "http://ocsp.thawte.com"
+                           }
+                        }
+                     }, 
+                     "X509v3CRLDistributionPoints": {
+                        "FullName": {
+                           "listEntry": null
+                        }, 
+                        "URI": {
+                           "listEntry": "http://crl.thawte.com/ThawteEVCA2006.crl"
+                        }
+                     }, 
+                     "X509v3BasicConstraints": "CA:FALSE", 
+                     "X509v3KeyUsage": {
+                        "KeyEncipherment": null, 
+                        "DigitalSignature": null
+                     }, 
+                     "X509v3SubjectAlternativeName": {
+                        "DNS": {
+                           "listEntry": "manage.rackspacecloud.com"
+                        }
+                     }, 
+                     "X509v3AuthorityKeyIdentifier": "keyid:CD:32:E2:F2:5D:25:47:02:AA:8F:79:4B:32:EE:03:99:FD:30:49:D1", 
+                     "X509v3CertificatePolicies": {
+                        "Policy": {
+                           "listEntry": "2.16.840.1.113733.1.7.48.1"
+                        }, 
+                        "CPS": {
+                           "listEntry": "https://www.thawte.com/cps"
+                        }
+                     }
+                  }, 
+                  "signatureValue": "b2:f7:0e:5d:69:0e:b1:71:87:09:11:de:1d:fa:eb:8f:c2:a7:e4:40:02:ef:df:d9:37:fc:50:74:b0:fc:af:6f:99:fb:37:9f:c1:49:0c:07:bf:5f:94:59:8e:64:2c:1c:6c:95:30:c6:b5:2c:e1:2d:66:69:f2:33:72:16:2c:6e:d5:8b:a8:05:7b:b3:dd:07:b3:11:6d:fe:23:96:58:37:2f:03:27:70:59:1c:30:35:18:d1:bb:7d:75:09:d6:75:65:22:13:2c:c2:3f:d7:3e:ae:7c:f3:f7:3f:2c:b7:e9:52:db:cb:ca:4d:c1:96:e1:72:22:d4:e0:6f:e6:7d:7e:32:08:88:24:f0:09:1a:0e:81:d0:b6:76:d5:37:60:63:fb:e3:fc:08:5d:24:44:ff:41:c6:24:af:0c:46:c7:f8:87:4e:45:bf:b2:15:0e:35:53:28:f7:81:5c:42:63:0e:b0:1d:64:9f:49:68:5e:10:d5:5d:10:88:be:7d:27:49:d2:3a:24:63:62:fa:3b:49:73:51:e9:68:ab:77:0e:dd:62:19:ec:dc:2a:14:31:15:f1:57:0f:8a:72:3b:9f:5e:04:b1:99:fb:52:11:ec:4e:69:49:df:b5:a1:73:17:ee:a0:cb:6e:d6:b6:68:70:85:61:23:36:ce:3a:8d:0b:cc", 
+                  "signatureAlgorithm": "sha1WithRSAEncryption", 
+                  "serialNumber": "70AF7A0B9262968AED5D02B34CEC6FFF", 
+                  "subject": {
+                     "organizationName": "Rackspace US, Inc.", 
+                     "businessCategory": "Private Organization", 
+                     "serialNumber": "4377687", 
+                     "commonName": "manage.rackspacecloud.com", 
+                     "stateOrProvinceName": "Texas", 
+                     "countryName": "US", 
+                     "oid-1.3.6.1.4.1.311.60.2.1.2": "Delaware", 
+                     "oid-1.3.6.1.4.1.311.60.2.1.3": "US", 
+                     "localityName": "San Antonio"
+                  }, 
+                  "validity": {
+                     "notAfter": "Aug  4 23:59:59 2015 GMT", 
+                     "notBefore": "Jul  5 00:00:00 2013 GMT"
+                  }, 
+                  "issuer": {
+                     "countryName": "US", 
+                     "commonName": "thawte Extended Validation SSL CA", 
+                     "organizationalUnitName": "Terms of use at https://www.thawte.com/cps (c)06", 
+                     "organizationName": "thawte, Inc."
+                  }
+               }, 
+               "ocspStapling": {
+                  "@error": "Server did not send back an OCSP response"
+               }
+            }
+         }, 
+         {
+            "@host": "www.pcwebshop.co.uk", 
+            "@ip": "217.160.239.225", 
+            "@port": "443", 
+            "certinfo": {
+               "@argument": "full", 
+               "@title": "Certificate", 
+               "certificate": {
+                  "@hasMatchingHostname": "False", 
+                  "@isExtendedValidation": "False", 
+                  "@isTrustedByMozillaCAStore": "False", 
+                  "@reasonWhyNotTrusted": "self signed certificate", 
+                  "@sha1Fingerprint": "fd71ad430da8eff3cd442f706953fe93c3c897b1", 
+                  "asPEM": "-----BEGIN CERTIFICATE-----\nMIIDszCCApsCBE6TRmYwDQYJKoZIhvcNAQEFBQAwgZ0xCzAJBgNVBAYTAlVTMREw\nDwYDVQQIEwhWaXJnaW5pYTEQMA4GA1UEBxMHSGVybmRvbjESMBAGA1UEChMJUGFy\nYWxsZWxzMRgwFgYDVQQLEw9QYXJhbGxlbHMgUGFuZWwxGDAWBgNVBAMTD1BhcmFs\nbGVscyBQYW5lbDEhMB8GCSqGSIb3DQEJARYSaW5mb0BwYXJhbGxlbHMuY29tMB4X\nDTExMTAxMDE5MjQyMloXDTEyMTAwOTE5MjQyMlowgZ0xCzAJBgNVBAYTAlVTMREw\nDwYDVQQIEwhWaXJnaW5pYTEQMA4GA1UEBxMHSGVybmRvbjESMBAGA1UEChMJUGFy\nYWxsZWxzMRgwFgYDVQQLEw9QYXJhbGxlbHMgUGFuZWwxGDAWBgNVBAMTD1BhcmFs\nbGVscyBQYW5lbDEhMB8GCSqGSIb3DQEJARYSaW5mb0BwYXJhbGxlbHMuY29tMIIB\nIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVBD6pKOtmZAOTDyvP/LIdGP\nVRG5ImXexVTnWe56JYiJ8VFppQa1nDhFNCfploUvR9nEdyv9XIFeMlcdqndU/nCn\nQAZtTw7PhXL80obKZNIAQPWKZmzEARgPmq7+Oe2xZOvbw7Ah9htZ+U7vJNml6ivM\n5urmhv/Bm6YOdtkCAriUTZB5HEOpF3XYQMRX0KhC30vMztrf9PY9ACcmVvs3TIQQ\nGmvFyxFCBjdIVBIaGQ3hjqMkVFyYno++Nji9VLD7FtNl8NpRXxqhUnpsVXHJmSl9\nhoR2BhHwGfJOn+hXg5M4IlcvU51Zlr+LS/0fUfgIMYnOwmlg7LSBPD7mwMqN/QID\nAQABMA0GCSqGSIb3DQEBBQUAA4IBAQBzsJCJg5I/bNFvPs+wNd2pnoI5tDMFYBEV\nxn+hENo7J2wtG1WTH854rwDwUuo8wVKFMSKCgu5XBSGicmfLyeBd5csJRzyh0csh\nHAanBrO7P2ne6sd154z+uDgztE0JvEcdtDhpp4UQCAd8qz1e/pfVPdHI7/Oem1kM\nZwPs0kWf8wDRBFtnU1UaKHd3lBWMDqNLMoyhUapN+q2R0FryCo5W8AquAeYLVJUS\nhSm5Otf3oje8ozKFDD217SAqf9bccxnGMgZ0vlrBWlpHCu4GIROqNIADM30nKze7\nPQKF1NdqU41oii6YMNMqwoH5j0w4Uy+KLx+PEHeFlFu5oMwsQVPs\n-----END CERTIFICATE-----", 
+                  "subjectPublicKeyInfo": {
+                     "publicKey": {
+                        "modulus": "00:c9:50:43:ea:92:8e:b6:66:40:39:30:f2:bc:ff:cb:21:d1:8f:55:11:b9:22:65:de:c5:54:e7:59:ee:7a:25:88:89:f1:51:69:a5:06:b5:9c:38:45:34:27:e9:96:85:2f:47:d9:c4:77:2b:fd:5c:81:5e:32:57:1d:aa:77:54:fe:70:a7:40:06:6d:4f:0e:cf:85:72:fc:d2:86:ca:64:d2:00:40:f5:8a:66:6c:c4:01:18:0f:9a:ae:fe:39:ed:b1:64:eb:db:c3:b0:21:f6:1b:59:f9:4e:ef:24:d9:a5:ea:2b:cc:e6:ea:e6:86:ff:c1:9b:a6:0e:76:d9:02:02:b8:94:4d:90:79:1c:43:a9:17:75:d8:40:c4:57:d0:a8:42:df:4b:cc:ce:da:df:f4:f6:3d:00:27:26:56:fb:37:4c:84:10:1a:6b:c5:cb:11:42:06:37:48:54:12:1a:19:0d:e1:8e:a3:24:54:5c:98:9e:8f:be:36:38:bd:54:b0:fb:16:d3:65:f0:da:51:5f:1a:a1:52:7a:6c:55:71:c9:99:29:7d:86:84:76:06:11:f0:19:f2:4e:9f:e8:57:83:93:38:22:57:2f:53:9d:59:96:bf:8b:4b:fd:1f:51:f8:08:31:89:ce:c2:69:60:ec:b4:81:3c:3e:e6:c0:ca:8d:fd", 
+                        "exponent": "65537"
+                     }, 
+                     "publicKeyAlgorithm": "rsaEncryption", 
+                     "publicKeySize": "2048 bit"
+                  }, 
+                  "version": "0", 
+                  "extensions": null, 
+                  "signatureValue": "73:b0:90:89:83:92:3f:6c:d1:6f:3e:cf:b0:35:dd:a9:9e:82:39:b4:33:05:60:11:15:c6:7f:a1:10:da:3b:27:6c:2d:1b:55:93:1f:ce:78:af:00:f0:52:ea:3c:c1:52:85:31:22:82:82:ee:57:05:21:a2:72:67:cb:c9:e0:5d:e5:cb:09:47:3c:a1:d1:cb:21:1c:06:a7:06:b3:bb:3f:69:de:ea:c7:75:e7:8c:fe:b8:38:33:b4:4d:09:bc:47:1d:b4:38:69:a7:85:10:08:07:7c:ab:3d:5e:fe:97:d5:3d:d1:c8:ef:f3:9e:9b:59:0c:67:03:ec:d2:45:9f:f3:00:d1:04:5b:67:53:55:1a:28:77:77:94:15:8c:0e:a3:4b:32:8c:a1:51:aa:4d:fa:ad:91:d0:5a:f2:0a:8e:56:f0:0a:ae:01:e6:0b:54:95:12:85:29:b9:3a:d7:f7:a2:37:bc:a3:32:85:0c:3d:b5:ed:20:2a:7f:d6:dc:73:19:c6:32:06:74:be:5a:c1:5a:5a:47:0a:ee:06:21:13:aa:34:80:03:33:7d:27:2b:37:bb:3d:02:85:d4:d7:6a:53:8d:68:8a:2e:98:30:d3:2a:c2:81:f9:8f:4c:38:53:2f:8a:2f:1f:8f:10:77:85:94:5b:b9:a0:cc:2c:41:53:ec", 
+                  "signatureAlgorithm": "sha1WithRSAEncryption", 
+                  "serialNumber": "4E934666", 
+                  "subject": {
+                     "organizationalUnitName": "Parallels Panel", 
+                     "organizationName": "Parallels", 
+                     "commonName": "Parallels Panel", 
+                     "stateOrProvinceName": "Virginia", 
+                     "countryName": "US", 
+                     "emailAddress": "info@parallels.com", 
+                     "localityName": "Herndon"
+                  }, 
+                  "validity": {
+                     "notAfter": "Oct  9 19:24:22 2012 GMT", 
+                     "notBefore": "Oct 10 19:24:22 2011 GMT"
+                  }, 
+                  "issuer": {
+                     "organizationalUnitName": "Parallels Panel", 
+                     "organizationName": "Parallels", 
+                     "commonName": "Parallels Panel", 
+                     "stateOrProvinceName": "Virginia", 
+                     "countryName": "US", 
+                     "emailAddress": "info@parallels.com", 
+                     "localityName": "Herndon"
+                  }
+               }, 
+               "ocspStapling": {
+                  "@error": "Server did not send back an OCSP response"
+               }
+            }
+         }
+      ]
+   }
+}
+"""
+"""     
+        buildreturn['resultsList'] = {}
+        for result in od['results']['target']:
+            host = result['@host']+result['@port']
+            buildreturn['resulsList'][host] = {}
+            #### COMMON DATAS
+            buildreturn['resultsList'][host]['commonName'] = result['certinfo']['certificate']['subject']['commonName'] #commoname
+
+            #### VALIDITY DATAS
+            # The .replace("*.*,"") was tacked on to replace wildcard certs beginning with *. with nothing, so
+            #   it matches the actual socket connect host, and validates to true.
+            if result['certinfo']['certificate']['subject']['commonName'].replace("*.", "") == result['@host']:
+                buildreturn['resultsList'][host]['hasMatchingHostname']     = True # host name match
+            else:
+                buildreturn['resultsList'][host]['hasMatchingHostname']     = False # host name not match
+            buildreturn['resultsList'][host]['isExtendedValidation']        = result['certinfo']['certificate']['@isExtendedValidation']
+            buildreturn['resultsList'][host]['isTrustedByMozillaCAStore']   = result['certinfo']['certificate']['@isTrustedByMozillaCAStore']
+            buildreturn['resultsList'][host]['reasonWhyNotTrusted']         = result['certinfo']['certificate']['@reasonWhyNotTrusted']
+            
+            #### FINGERPRINT DATAS
+            buildreturn['resultsList'][host]['sha1Fingerprint']             = result['certinfo']['certificate']['@sha1Fingerprint']
+            
+            # Who wants this? # buildreturn['resultsList'][host]['certPEM'] = result['certinfo']['certificate']['@asPEM']
+            
+            #### CERTIFICATE AUTHORITAY[sic] DATAS
+            try: # Some certs just aren't that legit!
+                caissuer = result['certinfo']['certificate']['extensions']['AuthorityInformationAccess']['CAIssuers']['URI']['listEntry']
+                buildreturn['resultsList'][host]['issuerURL']       = caissuer
+            except:
+                buildreturn['resultsList'][host]['issuerURL']       = ""
+            buildreturn['resultsList'][host]['issuerCommonName']    = result['certinfo']['certificate']['issuer']['commonName']
+            
+            #### CRYPTO DATA
+            buildreturn['resultsList'][host]['publicKeyAlgorithm']  = result['certinfo']['certificate']['subjectPublicKeyInfo']['publicKeyAlgorithm']
+            buildreturn['resultsList'][host]['publicKeySize']       = result['certinfo']['certificate']['subjectPublicKeyInfo']['publicKeySize']
+            
+            #### EXPIRY DATA
+            print "---- EXPIRE INFO ----"
+            buildreturn['resultsList'][host]['validNotAfter']       = result['certinfo']['certificate']['validity']['notAfter']
+            buildreturn['resultsList'][host]['validNotBefore']      = result['certinfo']['certificate']['validity']['notBefore']
+            #TODO TODO TODO buildreturn['resultsList'][host]['validRightNow'] = False
+            buildreturn['resultsList'][host]['serialNumber'] = result['certinfo']['certificate']['serialNumber']
+"""
+            # TODO HELPFUL TO INSPECT XXX XXX XXX XXX XXX XXX
+            #print " xxxxxxxxxxxxxxxx=\t\t" + str( json.dumps(result['certinfo']['certificate']['subjectPublicKeyInfo'], indent=3) )
 
 
 #{

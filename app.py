@@ -8,6 +8,9 @@ import tornado.web
 from tornado import gen
 from tornado.web import asynchronous
 
+import sys
+sys.path.append('app/classes/thirdparty/sslyze/')
+
 tornado.options.define('port', type=int, default=9000, help='server port number (default: 9000)')
 tornado.options.define('debug', type=bool, default=True, help='run in debug mode with autoreload (default: False)')
 
